@@ -1,7 +1,10 @@
+"""Генератор асинхронной сессии."""
+
 from typing import AsyncGenerator
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.db_session import async_session
+from restaurant_api.database.db_session import async_session
 
 
 async def get_session_db() -> AsyncGenerator[AsyncSession, None]:
