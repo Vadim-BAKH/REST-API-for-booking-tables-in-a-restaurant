@@ -1,0 +1,71 @@
+name: Python FastAPI CI/CD
+
+on:
+  push:
+    branches:
+      - feature/new-feature
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.12.3
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.12.3'
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Install dependencies with Poetry
+      run: |
+        poetry config virtualenvs.create false
+        poetry install --no-interaction --no-ansi
+
+    - name: Run flake8
+      run: |
+        flake8 .
+
+    - name: Run ruff
+      uses: astral-sh/ruff-action@v3
+
+    - name: Run isort
+      run: |
+        isort .
+
+    - name: Create .env file
+      run: |
+        echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" > .env
+        echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
+        echo "DB_PORT=${{ secrets.DB_PORT }}" >> .env
+        echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> .env
+        echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
+        echo "LOGLEVEL=${{ secrets.LOGLEVEL }}" >> .env
+
+    - name: Docker Compose build and up
+      env:
+        POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        DB_PORT: ${{ secrets.DB_PORT }}
+        POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+        DB_HOST: ${{ secrets.DB_HOST }}
+        LOGLEVEL: ${{ secrets.LOGLEVEL }}
+      run: |
+        docker compose up --build -d
+
+    - name: Run Pytest
+      run: |
+        pytest .
+
+    - name: Docker Compose down
+      run: |
+        docker compose down -v
